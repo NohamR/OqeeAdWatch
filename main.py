@@ -95,22 +95,22 @@ def fetch_service_plan():
 
     api_url = SERVICE_PLAN_API_URL
     try:
-        logger.info("Chargement de la liste des chaînes depuis l'API Oqee...")
+        logger.info("Loading channel list from the Oqee API...")
         response = requests.get(api_url, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         data = response.json()
         if not data.get("success") or "channels" not in data.get("result", {}):
-            logger.error("Erreur: Le format de la réponse de l'API est inattendu.")
+            logger.error("Error: Unexpected API response format.")
             return None
 
         channels_data = data["result"]["channels"]
         return channels_data
 
     except requests.exceptions.RequestException as exc:
-        logger.error("Une erreur réseau est survenue : %s", exc)
+        logger.error("A network error occurred: %s", exc)
         return None
     except ValueError:
-        logger.error("Erreur lors de l'analyse de la réponse JSON.")
+        logger.error("Error while parsing the JSON response.")
         return None
 
 def fetch_and_parse_ads(channel_id: str, conn: sqlite3.Connection) -> None:
@@ -146,7 +146,6 @@ def fetch_and_parse_ads(channel_id: str, conn: sqlite3.Connection) -> None:
             end_ts = item.get('end_time')
 
             if start_ts is None or end_ts is None:
-                # Skip malformed periods instead of crashing the script
                 logger.warning("Skipping ad break with missing timestamps: %s", item)
                 continue
 
@@ -183,7 +182,7 @@ def run_collection_cycle(conn: sqlite3.Connection) -> None:
 
     channels_data = fetch_service_plan()
     if not channels_data:
-        logger.warning("Aucune donnée de chaîne disponible pour ce cycle")
+        logger.warning("No channel data available for this cycle")
         return
 
     for channel_id, channel_info in channels_data.items():
@@ -198,9 +197,9 @@ def run_collection_cycle(conn: sqlite3.Connection) -> None:
         try:
             fetch_and_parse_ads(channel_id, conn)
         except requests.RequestException as exc:
-            logger.error("Erreur réseau pour la chaîne %s: %s", channel_id, exc)
+            logger.error("Network error for channel %s: %s", channel_id, exc)
         except Exception:  # pylint: disable=broad-exception-caught
-            logger.exception("Erreur inattendue pour la chaîne %s", channel_id)
+            logger.exception("Unexpected error for channel %s", channel_id)
 
 def main() -> None:
     """Entrypoint for CLI execution."""
@@ -216,19 +215,19 @@ def main() -> None:
     try:
         while True:
             cycle_started = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            logger.info("=== Nouvelle collecte démarrée à %s ===", cycle_started)
+            logger.info("=== New collection started at %s ===", cycle_started)
             try:
                 run_collection_cycle(conn)
             except Exception:  # pylint: disable=broad-exception-caught
-                logger.exception("Erreur critique pendant la collecte")
+                logger.exception("Critical error during collection")
 
             logger.info(
-                "Pause de %s minutes avant la prochaine collecte...",
+                "Pausing for %s minutes before the next collection...",
                 POLL_INTERVAL_SECONDS // 60,
             )
             time.sleep(POLL_INTERVAL_SECONDS)
     except KeyboardInterrupt:
-        logger.info("Arrêt demandé par l'utilisateur. Fermeture...")
+        logger.info("Shutdown requested by user. Closing...")
     finally:
         conn.close()
 
