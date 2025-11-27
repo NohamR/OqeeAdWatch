@@ -1,0 +1,14 @@
+[project]
+name = "OqeeAdWatch"
+version = "0.1.0"
+description = "Periodically fetches Oqee anti-adskipping periods and archives them in SQLite."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.32.5",
+]
+
+[dependency-groups]
+debug = [
+    "pylint>=4.0.3",
+]
