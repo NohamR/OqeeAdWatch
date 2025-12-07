@@ -58,17 +58,27 @@ def _human_ts(ts_value: int) -> str:
     return datetime.fromtimestamp(ts_value).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _load_rows(channel_id: str) -> list[Row]:
+def _load_rows(
+    channel_id: str, start_date: str | None = None, end_date: str | None = None
+) -> list[Row]:
     conn = get_connection(DB_PATH)
     try:
-        cursor = conn.execute(
-            """
+        query = """
             SELECT channel_id, start_ts, end_ts, ad_date
             FROM ads WHERE channel_id = ?
-            ORDER BY start_ts ASC
-            """,
-            (channel_id,),
-        )
+        """
+        params = [channel_id]
+
+        if start_date:
+            query += " AND ad_date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND ad_date <= ?"
+            params.append(end_date)
+
+        query += " ORDER BY start_ts ASC"
+
+        cursor = conn.execute(query, params)
         return cursor.fetchall()
     except sqlite3.OperationalError as exc:  # pragma: no cover - CLI helper
         raise SystemExit(
@@ -291,13 +301,21 @@ def main() -> None:
     )
     parser.add_argument("channel_id", help="Exact channel identifier to inspect")
     parser.add_argument(
+        "--start-date",
+        help="Start date for filtering (YYYY-MM-DD format, inclusive)",
+    )
+    parser.add_argument(
+        "--end-date",
+        help="End date for filtering (YYYY-MM-DD format, inclusive)",
+    )
+    parser.add_argument(
         "--no-plot",
         action="store_true",
         help="Skip the matplotlib chart and only print textual stats.",
     )
     args = parser.parse_args()
 
-    rows = _load_rows(args.channel_id)
+    rows = _load_rows(args.channel_id, args.start_date, args.end_date)
     stats = _compute_stats(rows)
     _print_stats(args.channel_id, stats)
 
