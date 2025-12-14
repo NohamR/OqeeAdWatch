@@ -12,10 +12,24 @@ import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib import font_manager as fm
+
+fpath = "libs/LibertinusSerif-Regular.otf"
+prop = fm.FontProperties(fname=fpath, size=14)
+
+# Register the font file so Matplotlib can find it and use it by default.
+try:
+    fm.fontManager.addfont(fpath)
+    font_name = fm.FontProperties(fname=fpath).get_name()
+    if font_name:
+        plt.rcParams["font.family"] = font_name
+        plt.rcParams["font.size"] = prop.get_size()
+except Exception:  # pragma: no cover - optional font may be missing
+    font_name = None
 
 # Allow running as a script from anywhere
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from utils.scrap import DB_PATH, get_connection
+from utils.scrap import DB_PATH, get_connection, fetch_service_plan
 
 Row = Sequence
 
@@ -223,7 +237,7 @@ def _print_stats(channel_id: str, stats: dict) -> None:
         )
 
 
-def _plot_hourly_profile(channel_id: str, profile: dict) -> None:
+def _plot_hourly_profile(channel_id: str, profile: dict, save=False) -> None:
     if not profile:
         print("No data available for the hourly plot.")
         return
@@ -239,23 +253,39 @@ def _plot_hourly_profile(channel_id: str, profile: dict) -> None:
 
     fig, ax_left = plt.subplots(figsize=(10, 5))
     ax_left.bar(hours, avg_duration_minutes, color="tab:blue", alpha=0.7)
-    ax_left.set_xlabel("Hour of day")
-    ax_left.set_ylabel("Avg ad duration per day (min)", color="tab:blue")
+    ax_left.set_xlabel("Hour of day", fontproperties=prop)
+    ax_left.set_ylabel("Avg ad duration per day (min)", color="tab:blue", fontproperties=prop)
     ax_left.set_xticks(hours)
+    ax_left.set_xticklabels([str(h) for h in hours], fontproperties=prop)
     ax_left.set_xlim(-0.5, 23.5)
 
     ax_right = ax_left.twinx()
     ax_right.plot(hours, avg_counts, color="tab:orange", marker="o")
-    ax_right.set_ylabel("Avg number of breaks", color="tab:orange")
+    ax_right.set_ylabel("Avg number of breaks", color="tab:orange", fontproperties=prop)
+
+    for id, channel_info in CHANNELS_DATA.items():
+        if id == channel_id:
+            channel_name = channel_info["name"]
+
+    for t in ax_left.get_yticklabels():
+        t.set_fontproperties(prop)
+    for t in ax_right.get_yticklabels():
+        t.set_fontproperties(prop)
 
     fig.suptitle(
-        f"Average ad activity for channel {channel_id} across {profile['days']} day(s)"
+        f"Average ad activity for channel {channel_name} ({channel_id}) across {profile['days']} day(s)",
+        fontproperties=prop,
     )
     fig.tight_layout()
     plt.show()
 
+    if save:
+        filename = f"visualizer/hourly_profile_{channel_id}.png"
+        fig.savefig(filename)
+        print(f"Hourly profile saved to {filename}")
 
-def _plot_heatmap(channel_id: str, heatmap: dict) -> None:
+
+def _plot_heatmap(channel_id: str, heatmap: dict, save=False) -> None:
     if not heatmap:
         print("No data available for the heatmap plot.")
         return
@@ -279,19 +309,31 @@ def _plot_heatmap(channel_id: str, heatmap: dict) -> None:
         vmin=0,
         vmax=1,
     )
-    ax.set_xlabel("Hour of day")
-    ax.set_ylabel("Minute within hour")
+    ax.set_xlabel("Hour of day", fontproperties=prop)
+    ax.set_ylabel("Minute within hour", fontproperties=prop)
     ax.set_xticks(range(0, 25, 2))
+    ax.set_xticklabels([str(x) for x in range(0, 25, 2)], fontproperties=prop)
     ax.set_yticks(range(0, 61, 10))
+    ax.set_yticklabels([str(y) for y in range(0, 61, 10)], fontproperties=prop)
 
     cbar = fig.colorbar(im, ax=ax)
-    cbar.set_label("Share of minute spent in ads per day")
+    cbar.set_label("Share of minute spent in ads per day", fontproperties=prop)
+
+    for id, channel_info in CHANNELS_DATA.items():
+        if id == channel_id:
+            channel_name = channel_info["name"]
 
     fig.suptitle(
-        f"Ad minute coverage for channel {channel_id} across {days} day(s)"
+        f"Ad minute coverage for channel {channel_name} ({channel_id}) across {days} day(s)",
+        fontproperties=prop,
     )
     fig.tight_layout()
     plt.show()
+
+    if save:
+        filename = f"visualizer/heatmap_{channel_id}.png"
+        fig.savefig(filename)
+        print(f"Heatmap saved to {filename}")
 
 
 def main() -> None:
@@ -326,5 +368,38 @@ def main() -> None:
         _plot_heatmap(args.channel_id, heatmap)
 
 
+def list_channels() -> list[str]:
+    """List all channel IDs present in the database."""
+    conn = get_connection(DB_PATH)
+    try:
+        cursor = conn.execute("SELECT DISTINCT channel_id FROM ads ORDER BY channel_id ASC")
+        return [row[0] for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def process_all_channels() -> None:
+    """Process all channels in the database and generate visualizations."""
+    # clear visualizer output directory
+    output_dir = Path("visualizer")
+    output_dir.mkdir(exist_ok=True)
+    for file in output_dir.glob("*.png"):
+        file.unlink()
+    channel_ids = list_channels()
+    for channel_id in channel_ids:
+        print(f"Processing channel {channel_id}...")
+        rows = _load_rows(channel_id)
+        stats = _compute_stats(rows)
+        _print_stats(channel_id, stats)
+
+        hourly_profile = _compute_hourly_profile(rows)
+        _plot_hourly_profile(channel_id, hourly_profile, save=True)
+        heatmap = _compute_heatmap(rows)
+        _plot_heatmap(channel_id, heatmap, save=True)
+
+
 if __name__ == "__main__":
-    main()
+    global CHANNELS_DATA
+    CHANNELS_DATA = fetch_service_plan()
+    # main()
+    process_all_channels()

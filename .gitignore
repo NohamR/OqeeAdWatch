@@ -218,3 +218,4 @@ __marimo__/
 
 ads.sqlite3
 .DS_Store
+/visualizer
