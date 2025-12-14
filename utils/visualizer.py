@@ -14,22 +14,22 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib import font_manager as fm
 
-fpath = "libs/LibertinusSerif-Regular.otf"
-prop = fm.FontProperties(fname=fpath, size=14)
+FPATH = "libs/LibertinusSerif-Regular.otf"
+prop = fm.FontProperties(fname=FPATH, size=14)
 
 # Register the font file so Matplotlib can find it and use it by default.
 try:
-    fm.fontManager.addfont(fpath)
-    font_name = fm.FontProperties(fname=fpath).get_name()
+    fm.fontManager.addfont(FPATH)
+    font_name = fm.FontProperties(fname=FPATH).get_name()
     if font_name:
         plt.rcParams["font.family"] = font_name
         plt.rcParams["font.size"] = prop.get_size()
-except Exception:  # pragma: no cover - optional font may be missing
+except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover - optional font may be missing
     font_name = None
 
 # Allow running as a script from anywhere
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from utils.scrap import DB_PATH, get_connection, fetch_service_plan
+from utils.scrap import DB_PATH, get_connection, fetch_service_plan  # pylint: disable=wrong-import-position
 
 Row = Sequence
 
@@ -263,8 +263,9 @@ def _plot_hourly_profile(channel_id: str, profile: dict, save=False) -> None:
     ax_right.plot(hours, avg_counts, color="tab:orange", marker="o")
     ax_right.set_ylabel("Avg number of breaks", color="tab:orange", fontproperties=prop)
 
-    for id, channel_info in CHANNELS_DATA.items():
-        if id == channel_id:
+    channel_name = channel_id
+    for ch_id, channel_info in (CHANNELS_DATA or {}).items():
+        if ch_id == channel_id:
             channel_name = channel_info["name"]
 
     for t in ax_left.get_yticklabels():
@@ -273,7 +274,10 @@ def _plot_hourly_profile(channel_id: str, profile: dict, save=False) -> None:
         t.set_fontproperties(prop)
 
     fig.suptitle(
-        f"Average ad activity for channel {channel_name} ({channel_id}) across {profile['days']} day(s)",
+        (
+            "Average ad activity for channel "
+            f"{channel_name} ({channel_id}) across {profile['days']} day(s)"
+        ),
         fontproperties=prop,
     )
     fig.tight_layout()
@@ -319,12 +323,16 @@ def _plot_heatmap(channel_id: str, heatmap: dict, save=False) -> None:
     cbar = fig.colorbar(im, ax=ax)
     cbar.set_label("Share of minute spent in ads per day", fontproperties=prop)
 
-    for id, channel_info in CHANNELS_DATA.items():
-        if id == channel_id:
+    channel_name = channel_id
+    for ch_id, channel_info in CHANNELS_DATA.items():
+        if ch_id == channel_id:
             channel_name = channel_info["name"]
 
     fig.suptitle(
-        f"Ad minute coverage for channel {channel_name} ({channel_id}) across {days} day(s)",
+        (
+            "Ad minute coverage for channel "
+            f"{channel_name} ({channel_id}) across {days} day(s)"
+        ),
         fontproperties=prop,
     )
     fig.tight_layout()
@@ -399,7 +407,6 @@ def process_all_channels() -> None:
 
 
 if __name__ == "__main__":
-    global CHANNELS_DATA
     CHANNELS_DATA = fetch_service_plan()
     # main()
     process_all_channels()
