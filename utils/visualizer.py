@@ -7,29 +7,35 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 import sqlite3
 import statistics
-from typing import Iterable, Sequence
 import sys
+from typing import Iterable, Sequence
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from matplotlib import font_manager as fm
+from matplotlib import font_manager as font_manager
 
 FPATH = "libs/LibertinusSerif-Regular.otf"
-prop = fm.FontProperties(fname=FPATH, size=14)
+prop = font_manager.FontProperties(fname=FPATH, size=14)
 
 # Register the font file so Matplotlib can find it and use it by default.
 try:
-    fm.fontManager.addfont(FPATH)
-    font_name = fm.FontProperties(fname=FPATH).get_name()
+    font_manager.fontManager.addfont(FPATH)
+    font_name = font_manager.FontProperties(fname=FPATH).get_name()
     if font_name:
         plt.rcParams["font.family"] = font_name
         plt.rcParams["font.size"] = prop.get_size()
-except Exception:  # pylint: disable=broad-exception-caught  # pragma: no cover - optional font may be missing
+except (
+    Exception
+):  # pylint: disable=broad-exception-caught  # pragma: no cover - optional font may be missing
     font_name = None
 
 # Allow running as a script from anywhere
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from utils.scrap import DB_PATH, get_connection, fetch_service_plan  # pylint: disable=wrong-import-position
+from utils.scrap import (
+    DB_PATH,
+    get_connection,
+    fetch_service_plan,
+)  # pylint: disable=wrong-import-position
 
 Row = Sequence
 
@@ -61,12 +67,10 @@ def _merge_overlapping_breaks(rows: list[Row]) -> list[Row]:
             merged[-1] = (prev_row[0], prev_row[1], new_end, prev_row[3])
 
     # Filter out breaks longer than MAX_BREAK_DURATION (likely errors)
-    filtered = [
-        row for row in merged
-        if (row[2] - row[1]) <= MAX_BREAK_DURATION
-    ]
+    filtered = [row for row in merged if (row[2] - row[1]) <= MAX_BREAK_DURATION]
 
     return filtered
+
 
 def _format_duration(seconds: int) -> str:
     minutes, secs = divmod(seconds, 60)
@@ -359,7 +363,9 @@ def _build_overview_text(channel_id: str, stats: dict) -> str:
     return "\n".join(lines)
 
 
-def _plot_hourly_profile(channel_id: str, profile: dict, stats: dict | None = None, save=False) -> None:
+def _plot_hourly_profile(
+    channel_id: str, profile: dict, stats: dict | None = None, save=False
+) -> None:
     if not profile:
         print("No data available for the hourly plot.")
         return
@@ -376,7 +382,9 @@ def _plot_hourly_profile(channel_id: str, profile: dict, stats: dict | None = No
     fig, ax_left = plt.subplots(figsize=(14, 5))
     ax_left.bar(hours, avg_duration_minutes, color="tab:blue", alpha=0.7)
     ax_left.set_xlabel("Hour of day", fontproperties=prop)
-    ax_left.set_ylabel("Avg ad duration per day (min)", color="tab:blue", fontproperties=prop)
+    ax_left.set_ylabel(
+        "Avg ad duration per day (min)", color="tab:blue", fontproperties=prop
+    )
     ax_left.set_xticks(hours)
     ax_left.set_xticklabels([str(h) for h in hours], fontproperties=prop)
     ax_left.set_xlim(-0.5, 23.5)
@@ -407,13 +415,15 @@ def _plot_hourly_profile(channel_id: str, profile: dict, stats: dict | None = No
     if stats:
         overview_text = _build_overview_text(channel_id, stats)
         fig.text(
-            0.73, 0.5, overview_text,
+            0.73,
+            0.5,
+            overview_text,
             transform=fig.transFigure,
             fontproperties=prop,
             fontsize=12,
             verticalalignment="center",
             horizontalalignment="left",
-            bbox=dict(boxstyle="round,pad=0.5", facecolor="wheat", alpha=0.8),
+            bbox={"boxstyle": "round,pad=0.5", "facecolor": "wheat", "alpha": 0.8},
         )
 
     fig.tight_layout(rect=[0, 0, 0.72 if stats else 1, 1])
@@ -425,7 +435,9 @@ def _plot_hourly_profile(channel_id: str, profile: dict, stats: dict | None = No
         print(f"Hourly profile saved to {filename}")
 
 
-def _plot_heatmap(channel_id: str, heatmap: dict, stats: dict | None = None, save=False) -> None:
+def _plot_heatmap(
+    channel_id: str, heatmap: dict, stats: dict | None = None, save=False
+) -> None:
     if not heatmap:
         print("No data available for the heatmap plot.")
         return
@@ -435,8 +447,7 @@ def _plot_heatmap(channel_id: str, heatmap: dict, stats: dict | None = None, sav
         return
 
     normalized = [
-        [min(value / (60 * days), 1.0) for value in row]
-        for row in heatmap["grid"]
+        [min(value / (60 * days), 1.0) for value in row] for row in heatmap["grid"]
     ]
 
     fig, ax = plt.subplots(figsize=(14, 5))
@@ -476,13 +487,15 @@ def _plot_heatmap(channel_id: str, heatmap: dict, stats: dict | None = None, sav
     if stats:
         overview_text = _build_overview_text(channel_id, stats)
         fig.text(
-            0.73, 0.5, overview_text,
+            0.73,
+            0.5,
+            overview_text,
             transform=fig.transFigure,
             fontproperties=prop,
             fontsize=12,
             verticalalignment="center",
             horizontalalignment="left",
-            bbox=dict(boxstyle="round,pad=0.5", facecolor="wheat", alpha=0.8),
+            bbox={"boxstyle": "round,pad=0.5", "facecolor": "wheat", "alpha": 0.8},
         )
 
     fig.tight_layout(rect=[0, 0, 0.72 if stats else 1, 1])
@@ -494,7 +507,9 @@ def _plot_heatmap(channel_id: str, heatmap: dict, stats: dict | None = None, sav
         print(f"Heatmap saved to {filename}")
 
 
-def _plot_combined(channel_id: str, profile: dict, heatmap: dict, stats: dict | None = None, save=False) -> None:
+def _plot_combined(
+    channel_id: str, profile: dict, heatmap: dict, stats: dict | None = None, save=False
+) -> None:
     """Plot both hourly profile and heatmap in a single figure with the overview text box."""
     if not profile or not profile.get("days"):
         print("No data available for the hourly plot.")
@@ -521,7 +536,9 @@ def _plot_combined(channel_id: str, profile: dict, heatmap: dict, stats: dict | 
 
     ax_hourly.bar(hours, avg_duration_minutes, color="tab:blue", alpha=0.7)
     ax_hourly.set_xlabel("Hour of day", fontproperties=prop)
-    ax_hourly.set_ylabel("Avg ad duration per day (min)", color="tab:blue", fontproperties=prop)
+    ax_hourly.set_ylabel(
+        "Avg ad duration per day (min)", color="tab:blue", fontproperties=prop
+    )
     ax_hourly.set_xticks(hours)
     ax_hourly.set_xticklabels([str(h) for h in hours], fontproperties=prop)
     ax_hourly.set_xlim(-0.5, 23.5)
@@ -529,7 +546,9 @@ def _plot_combined(channel_id: str, profile: dict, heatmap: dict, stats: dict | 
 
     ax_hourly_right = ax_hourly.twinx()
     ax_hourly_right.plot(hours, avg_counts, color="tab:orange", marker="o")
-    ax_hourly_right.set_ylabel("Avg number of breaks", color="tab:orange", fontproperties=prop)
+    ax_hourly_right.set_ylabel(
+        "Avg number of breaks", color="tab:orange", fontproperties=prop
+    )
 
     for t in ax_hourly.get_yticklabels():
         t.set_fontproperties(prop)
@@ -539,8 +558,7 @@ def _plot_combined(channel_id: str, profile: dict, heatmap: dict, stats: dict | 
     # --- Heatmap (bottom) ---
     days = heatmap.get("days", 0)
     normalized = [
-        [min(value / (60 * days), 1.0) for value in row]
-        for row in heatmap["grid"]
+        [min(value / (60 * days), 1.0) for value in row] for row in heatmap["grid"]
     ]
 
     im = ax_heatmap.imshow(
@@ -574,13 +592,15 @@ def _plot_combined(channel_id: str, profile: dict, heatmap: dict, stats: dict | 
     if stats:
         overview_text = _build_overview_text(channel_id, stats)
         fig.text(
-            0.73, 0.5, overview_text,
+            0.73,
+            0.5,
+            overview_text,
             transform=fig.transFigure,
             fontproperties=prop,
             fontsize=12,
             verticalalignment="center",
             horizontalalignment="left",
-            bbox=dict(boxstyle="round,pad=0.5", facecolor="wheat", alpha=0.8),
+            bbox={"boxstyle": "round,pad=0.5", "facecolor": "wheat", "alpha": 0.8},
         )
 
     fig.tight_layout(rect=[0, 0, 0.72 if stats else 1, 0.96])
@@ -595,7 +615,7 @@ def _plot_combined(channel_id: str, profile: dict, heatmap: dict, stats: dict | 
 def _plot_weekday_overview(all_channels_data: list[dict], save=False) -> None:
     """
     Plot a weekday overview for all channels.
-    
+
     Each channel gets:
     - A bar showing number of ads per weekday
     - A horizontal heatmap strip showing ad coverage by weekday x hour
@@ -608,7 +628,9 @@ def _plot_weekday_overview(all_channels_data: list[dict], save=False) -> None:
     num_channels = len(all_channels_data)
 
     # Create figure with 2 subplots side by side
-    fig, (ax_bars, ax_heatmap) = plt.subplots(1, 2, figsize=(18, max(8, num_channels * 0.5)))
+    fig, (ax_bars, ax_heatmap) = plt.subplots(
+        1, 2, figsize=(18, max(8, num_channels * 0.5))
+    )
 
     # Prepare data for plotting
     channel_names = []
@@ -640,19 +662,23 @@ def _plot_weekday_overview(all_channels_data: list[dict], save=False) -> None:
         normalized_row = []
         for weekday in range(7):
             for hour in range(24):
-                val = grid[weekday][hour] / max(hm_days_seen[weekday], 1) / 3600  # Fraction of hour
+                val = (
+                    grid[weekday][hour] / max(hm_days_seen[weekday], 1) / 3600
+                )  # Fraction of hour
                 normalized_row.append(min(val, 1.0))
         heatmap_data.append(normalized_row)
 
     # --- Left plot: Grouped bar chart for weekday counts ---
     x = range(num_channels)
     bar_width = 0.12
-    colors = plt.cm.tab10(range(7))
+    colors = plt.cm.tab10(range(7))  # pylint: disable=no-member
 
     for i, weekday in enumerate(weekday_names):
         offsets = [xi + (i - 3) * bar_width for xi in x]
         values = [weekday_counts_all[ch][i] for ch in range(num_channels)]
-        ax_bars.barh(offsets, values, height=bar_width, label=weekday, color=colors[i], alpha=0.8)
+        ax_bars.barh(
+            offsets, values, height=bar_width, label=weekday, color=colors[i], alpha=0.8
+        )
 
     ax_bars.set_yticks(list(x))
     ax_bars.set_yticklabels(channel_names, fontproperties=prop)
@@ -687,7 +713,9 @@ def _plot_weekday_overview(all_channels_data: list[dict], save=False) -> None:
     cbar = fig.colorbar(im, ax=ax_heatmap, shrink=0.8)
     cbar.set_label("Fraction of hour in ads (avg per day)", fontproperties=prop)
 
-    fig.suptitle("Weekly ad patterns across all channels", fontproperties=prop, fontsize=16)
+    fig.suptitle(
+        "Weekly ad patterns across all channels", fontproperties=prop, fontsize=16
+    )
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
 
@@ -697,10 +725,16 @@ def _plot_weekday_overview(all_channels_data: list[dict], save=False) -> None:
         print(f"Weekday overview saved to {filename}")
 
 
-def _plot_weekday_channel(channel_id: str, weekday_profile: dict, weekday_hour_counts: dict, stats: dict | None = None, save=False) -> None:
+def _plot_weekday_channel(
+    channel_id: str,
+    weekday_profile: dict,
+    weekday_hour_counts: dict,
+    stats: dict | None = None,
+    save=False,
+) -> None:
     """
     Plot a weekday overview for a single channel.
-    
+
     Shows:
     - Bar chart of ad breaks per weekday
     - Heatmap of ad break counts by weekday x hour (7 rows x 24 columns)
@@ -732,7 +766,14 @@ def _plot_weekday_channel(channel_id: str, weekday_profile: dict, weekday_hour_c
     x = range(7)
     bar_width = 0.35
 
-    bars1 = ax_bars.bar([i - bar_width/2 for i in x], avg_counts, bar_width, label="Avg breaks", color="tab:blue", alpha=0.7)
+    bars1 = ax_bars.bar(
+        [i - bar_width / 2 for i in x],
+        avg_counts,
+        bar_width,
+        label="Avg breaks",
+        color="tab:blue",
+        alpha=0.7,
+    )
     ax_bars.set_ylabel("Avg number of ad breaks", color="tab:blue", fontproperties=prop)
     ax_bars.set_xticks(list(x))
     ax_bars.set_xticklabels(weekday_names, fontproperties=prop)
@@ -740,11 +781,22 @@ def _plot_weekday_channel(channel_id: str, weekday_profile: dict, weekday_hour_c
     ax_bars.set_title("Ad breaks by day of week (average per day)", fontproperties=prop)
 
     ax_bars_right = ax_bars.twinx()
-    bars2 = ax_bars_right.bar([i + bar_width/2 for i in x], avg_duration_minutes, bar_width, label="Avg duration (min)", color="tab:orange", alpha=0.7)
-    ax_bars_right.set_ylabel("Avg ad duration (min)", color="tab:orange", fontproperties=prop)
+    bars2 = ax_bars_right.bar(
+        [i + bar_width / 2 for i in x],
+        avg_duration_minutes,
+        bar_width,
+        label="Avg duration (min)",
+        color="tab:orange",
+        alpha=0.7,
+    )
+    ax_bars_right.set_ylabel(
+        "Avg ad duration (min)", color="tab:orange", fontproperties=prop
+    )
 
     # Combined legend
-    ax_bars.legend([bars1, bars2], ["Avg breaks", "Avg duration (min)"], loc="upper right")
+    ax_bars.legend(
+        [bars1, bars2], ["Avg breaks", "Avg duration (min)"], loc="upper right"
+    )
 
     for t in ax_bars.get_yticklabels():
         t.set_fontproperties(prop)
@@ -783,13 +835,15 @@ def _plot_weekday_channel(channel_id: str, weekday_profile: dict, weekday_hour_c
     if stats:
         overview_text = _build_overview_text(channel_id, stats)
         fig.text(
-            0.73, 0.5, overview_text,
+            0.73,
+            0.5,
+            overview_text,
             transform=fig.transFigure,
             fontproperties=prop,
             fontsize=12,
             verticalalignment="center",
             horizontalalignment="left",
-            bbox=dict(boxstyle="round,pad=0.5", facecolor="wheat", alpha=0.8),
+            bbox={"boxstyle": "round,pad=0.5", "facecolor": "wheat", "alpha": 0.8},
         )
 
     fig.tight_layout(rect=[0, 0, 0.72 if stats else 1, 0.96])
@@ -805,7 +859,9 @@ def list_channels() -> list[str]:
     """List all channel IDs present in the database."""
     conn = get_connection(DB_PATH)
     try:
-        cursor = conn.execute("SELECT DISTINCT channel_id FROM ads ORDER BY channel_id ASC")
+        cursor = conn.execute(
+            "SELECT DISTINCT channel_id FROM ads ORDER BY channel_id ASC"
+        )
         return [row[0] for row in cursor.fetchall()]
     finally:
         conn.close()
@@ -838,13 +894,15 @@ def _plot_channel_rankings(all_stats: list[dict], save=False) -> None:
 
         max_break_duration = stats["max_break"][0] if stats.get("max_break") else 0
 
-        channels_data.append({
-            "channel_id": channel_id,
-            "channel_name": channel_name,
-            "total_ads": stats.get("count", 0),
-            "total_duration": stats.get("total_duration", 0),
-            "longest_break": max_break_duration,
-        })
+        channels_data.append(
+            {
+                "channel_id": channel_id,
+                "channel_name": channel_name,
+                "total_ads": stats.get("count", 0),
+                "total_duration": stats.get("total_duration", 0),
+                "longest_break": max_break_duration,
+            }
+        )
 
     if not channels_data:
         print("No channel data for rankings.")
@@ -861,7 +919,7 @@ def _plot_channel_rankings(all_stats: list[dict], save=False) -> None:
 
     for ax, (metric, title, xlabel, color) in zip(axes, rankings):
         # Sort by the metric (descending)
-        sorted_data = sorted(channels_data, key=lambda x: x[metric], reverse=True)
+        sorted_data = sorted(channels_data, key=lambda x, m=metric: x[m], reverse=True)
 
         names = [d["channel_name"] for d in sorted_data]
         values = [d[metric] for d in sorted_data]
@@ -885,11 +943,11 @@ def _plot_channel_rankings(all_stats: list[dict], save=False) -> None:
         ax.invert_yaxis()  # Highest at top
 
         # Add value labels on bars
-        for i, (bar, label) in enumerate(zip(bars, labels)):
-            width = bar.get_width()
+        for bar_rect, label in zip(bars, labels):
+            width = bar_rect.get_width()
             ax.text(
                 width + max(display_values) * 0.01,
-                bar.get_y() + bar.get_height() / 2,
+                bar_rect.get_y() + bar_rect.get_height() / 2,
                 label,
                 va="center",
                 ha="left",
@@ -924,12 +982,12 @@ def process_all_channels(start_date, end_date) -> None:
     for file in output_dir.glob("*.png"):
         file.unlink()
     channel_ids = list_channels()
-    
+
     # Collect data for all channels (for the weekday overview plot)
     all_channels_data = []
     # Collect stats for all channels (for the rankings plot)
     all_stats = []
-    
+
     for channel_id in channel_ids:
         print(f"Processing channel {channel_id}...")
         rows = _load_rows(channel_id, start_date, end_date)
@@ -939,30 +997,36 @@ def process_all_channels(start_date, end_date) -> None:
         hourly_profile = _compute_hourly_profile(rows)
         heatmap = _compute_heatmap(rows)
         _plot_combined(channel_id, hourly_profile, heatmap, stats=stats, save=True)
-        
+
         # Compute weekday data for the overview plot
         weekday_profile = _compute_weekday_profile(rows)
         weekday_heatmap = _compute_weekday_hour_heatmap(rows)
         weekday_hour_counts = _compute_weekday_hour_counts(rows)
-        
+
         # Generate individual weekday overview for this channel
-        _plot_weekday_channel(channel_id, weekday_profile, weekday_hour_counts, stats=stats, save=True)
-        
-        all_channels_data.append({
-            "channel_id": channel_id,
-            "weekday_profile": weekday_profile,
-            "weekday_heatmap": weekday_heatmap,
-        })
-        
+        _plot_weekday_channel(
+            channel_id, weekday_profile, weekday_hour_counts, stats=stats, save=True
+        )
+
+        all_channels_data.append(
+            {
+                "channel_id": channel_id,
+                "weekday_profile": weekday_profile,
+                "weekday_heatmap": weekday_heatmap,
+            }
+        )
+
         # Collect stats for rankings
-        all_stats.append({
-            "channel_id": channel_id,
-            "stats": stats,
-        })
-    
+        all_stats.append(
+            {
+                "channel_id": channel_id,
+                "stats": stats,
+            }
+        )
+
     # Generate the weekday overview plot for all channels
     _plot_weekday_overview(all_channels_data, save=True)
-    
+
     # Generate the channel rankings plot
     _plot_channel_rankings(all_stats, save=True)
 
