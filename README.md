@@ -36,18 +36,39 @@ The primary key `(channel_id, start_ts, end_ts)` prevents duplicates when the AP
 
 ### Visualizing collected ads
 
-The helper `visualizer.py` script prints a quick summary for a single channel:
+The helper `visualizer.py` script analyzes and visualizes ad data from the database:
 
 ```bash
+# Process all channels (default)
+uv run python utils/visualizer.py
+
+# Process a specific channel
 uv run python utils/visualizer.py <channel-id>
+
+# Filter by date range
+uv run python utils/visualizer.py --start-date 2025-11-28 --end-date 2025-12-21
+
+# Single channel with date filter
+uv run python utils/visualizer.py <channel-id> --start-date 2025-11-28
 ```
 
-You will see totals, min/max dates, longest breaks, and a per-day breakdown for that channel based on the ads already stored in `ads.sqlite3`. Matplotlib windows display:
+**Single channel mode** displays:
+- Totals, min/max dates, longest breaks, and a per-day breakdown
+- A 24h profile (bars = average ad minutes per day, line = average break count)
+- A minute-vs-hour heatmap showing ad coverage
 
-- A 24h profile (bars = average ad minutes per day, line = average break count).
-- A minute-vs-hour heatmap (white to red) showing how much of each minute is covered by ads on average.
+**All channels mode** generates additional visualizations saved to `visualizer/`:
+- Combined hourly profile and heatmap for each channel
+- Weekday analysis per channel (ad breaks by day of week, weekday×hour heatmap)
+- Weekly ad patterns overview across all channels
+- **Channel rankings** comparing all channels by:
+  - Total number of ads
+  - Total ad duration
+  - Longest single ad break
 
 Add `--no-plot` if you only want the textual summary.
+
+> **Note:** Ad breaks longer than 30 minutes are automatically filtered out as they are likely errors.
 
 ### Webhook heartbeat
 
