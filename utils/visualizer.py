@@ -801,38 +801,6 @@ def _plot_weekday_channel(channel_id: str, weekday_profile: dict, weekday_hour_c
         print(f"Weekday overview saved to {filename}")
 
 
-def main() -> None:
-    """CLI entrypoint for visualizing ad breaks."""
-    parser = argparse.ArgumentParser(
-        description="Inspect ad breaks for a single channel from the local database.",
-    )
-    parser.add_argument("channel_id", help="Exact channel identifier to inspect")
-    parser.add_argument(
-        "--start-date",
-        help="Start date for filtering (YYYY-MM-DD format, inclusive)",
-    )
-    parser.add_argument(
-        "--end-date",
-        help="End date for filtering (YYYY-MM-DD format, inclusive)",
-    )
-    parser.add_argument(
-        "--no-plot",
-        action="store_true",
-        help="Skip the matplotlib chart and only print textual stats.",
-    )
-    args = parser.parse_args()
-
-    rows = _load_rows(args.channel_id, args.start_date, args.end_date)
-    stats = _compute_stats(rows)
-    _print_stats(args.channel_id, stats)
-
-    if not args.no_plot:
-        hourly_profile = _compute_hourly_profile(rows)
-        _plot_hourly_profile(args.channel_id, hourly_profile, stats=stats)
-        heatmap = _compute_heatmap(rows)
-        _plot_heatmap(args.channel_id, heatmap, stats=stats)
-
-
 def list_channels() -> list[str]:
     """List all channel IDs present in the database."""
     conn = get_connection(DB_PATH)
@@ -947,11 +915,9 @@ def _plot_channel_rankings(all_stats: list[dict], save=False) -> None:
         print(f"Channel rankings saved to {filename}")
 
 
-def process_all_channels() -> None:
+def process_all_channels(start_date, end_date) -> None:
     """Process all channels in the database and generate visualizations."""
     # clear visualizer output directory
-    start_date = "2025-11-28"
-    end_date = "2025-12-21"
 
     output_dir = Path("visualizer")
     output_dir.mkdir(exist_ok=True)
@@ -1001,7 +967,48 @@ def process_all_channels() -> None:
     _plot_channel_rankings(all_stats, save=True)
 
 
+def main() -> None:
+    """CLI entrypoint for visualizing ad breaks."""
+    parser = argparse.ArgumentParser(
+        description="Inspect ad breaks for channels from the local database.",
+    )
+    parser.add_argument(
+        "channel_id",
+        nargs="?",
+        default="all",
+        help="Channel identifier to inspect, or 'all' to process all channels (default: all)",
+    )
+    parser.add_argument(
+        "--start-date",
+        help="Start date for filtering (YYYY-MM-DD format, inclusive)",
+    )
+    parser.add_argument(
+        "--end-date",
+        help="End date for filtering (YYYY-MM-DD format, inclusive)",
+    )
+    parser.add_argument(
+        "--no-plot",
+        action="store_true",
+        help="Skip the matplotlib chart and only print textual stats.",
+    )
+    args = parser.parse_args()
+
+    if args.channel_id.lower() == "all":
+        # Process all channels
+        process_all_channels(args.start_date, args.end_date)
+    else:
+        # Process single channel
+        rows = _load_rows(args.channel_id, args.start_date, args.end_date)
+        stats = _compute_stats(rows)
+        _print_stats(args.channel_id, stats)
+
+        if not args.no_plot:
+            hourly_profile = _compute_hourly_profile(rows)
+            _plot_hourly_profile(args.channel_id, hourly_profile, stats=stats)
+            heatmap = _compute_heatmap(rows)
+            _plot_heatmap(args.channel_id, heatmap, stats=stats)
+
+
 if __name__ == "__main__":
     CHANNELS_DATA = fetch_service_plan()
-    # main()
-    process_all_channels()
+    main()
