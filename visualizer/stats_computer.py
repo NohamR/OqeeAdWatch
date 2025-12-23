@@ -1,3 +1,5 @@
+"""Statistics computation utilities for the visualizer."""
+
 from collections import defaultdict
 from datetime import datetime, timedelta
 import statistics

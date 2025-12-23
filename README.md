@@ -36,20 +36,21 @@ The primary key `(channel_id, start_ts, end_ts)` prevents duplicates when the AP
 
 ### Visualizing collected ads
 
-The helper `visualizer.py` script analyzes and visualizes ad data from the database:
+The `visualizer/main.py` script analyzes and visualizes ad data from the database:
 
 ```bash
 # Process all channels (default)
-uv run python utils/visualizer.py
+uv run ./visualizer/main.py
 
 # Process a specific channel
-uv run python utils/visualizer.py <channel-id>
+uv run ./visualizer/main.py <channel-id>
 
 # Filter by date range
-uv run python utils/visualizer.py --start-date 2025-11-28 --end-date 2025-12-21
+uv run ./visualizer/main.py --start-date 2025-11-28 --end-date 2025-12-21
+```
 
 # Single channel with date filter
-uv run python utils/visualizer.py <channel-id> --start-date 2025-11-28
+uv run ./visualizer/main.py <channel-id> --start-date 2025-11-28
 ```
 
 **Single channel mode** displays:
@@ -57,7 +58,7 @@ uv run python utils/visualizer.py <channel-id> --start-date 2025-11-28
 - A 24h profile (bars = average ad minutes per day, line = average break count)
 - A minute-vs-hour heatmap showing ad coverage
 
-**All channels mode** generates additional visualizations saved to `visualizer/`:
+**All channels mode** generates additional visualizations saved to `visualizer_output/`:
 - Combined hourly profile and heatmap for each channel
 - Weekday analysis per channel (ad breaks by day of week, weekday×hour heatmap)
 - Weekly ad patterns overview across all channels

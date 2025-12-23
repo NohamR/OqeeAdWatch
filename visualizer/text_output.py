@@ -1,6 +1,8 @@
-from datetime import datetime
+"""Text output utilities for the visualizer."""
+
 from typing import Dict
-from visualizer.utils import format_duration, human_ts, CHANNELS_DATA
+from .utils import format_duration, human_ts, CHANNELS_DATA, get_channel_name
+
 
 def print_stats(channel_id: str, stats: Dict) -> None:
     """Print formatted ad break statistics to the console."""
@@ -36,18 +38,15 @@ def print_stats(channel_id: str, stats: Dict) -> None:
         )
 
 
-def build_overview_text(channel_id: str, stats: Dict, channels_data: Dict = CHANNELS_DATA) -> str:
+def build_overview_text(
+    channel_id: str, stats: Dict, channels_data: Dict = CHANNELS_DATA
+) -> str:
     """Build a multi-line string with channel overview stats."""
     if not stats:
         return ""
-    
     max_break_duration, max_break_row = stats["max_break"]
 
-    channel_name = channel_id
-    for ch_id, channel_info in (channels_data or {}).items():
-        if ch_id == channel_id:
-            channel_name = channel_info["name"]
-            break
+    channel_name = get_channel_name(channel_id, channels_data)
 
     lines = [
         f"Channel: {channel_name} ({channel_id})",

@@ -1,14 +1,17 @@
+"""Data loading utilities for the ad visualizer."""
+
 import sqlite3
 from typing import Sequence, List, Optional
 from pathlib import Path
 import sys
 
+from utils.scrap import DB_PATH, get_connection
+
 # Allow running as a script from anywhere
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from utils.scrap import DB_PATH, get_connection
-
 Row = Sequence
+
 
 def load_ads_data(
     channel_id: str, start_date: Optional[str] = None, end_date: Optional[str] = None

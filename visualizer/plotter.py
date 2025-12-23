@@ -1,7 +1,11 @@
-import matplotlib.pyplot as plt
-from matplotlib import font_manager as font_manager
+"""Plotting utilities for the ad visualizer."""
+
 from pathlib import Path
-from typing import Dict, List, Callable
+from typing import Dict, List, Callable, Optional
+import matplotlib.pyplot as plt
+from matplotlib import font_manager
+
+from .utils import format_duration, get_channel_name
 
 FPATH = "libs/LibertinusSerif-Regular.otf"
 prop = font_manager.FontProperties(fname=FPATH, size=14)
@@ -13,13 +17,9 @@ try:
     if font_name:
         plt.rcParams["font.family"] = font_name
         plt.rcParams["font.size"] = prop.get_size()
-except (
-    Exception
-):  # pylint: disable=broad-exception-caught  # pragma: no cover - optional font may be missing
+except (OSError, ValueError):
     font_name = None
 
-# Renamed _format_duration and _human_ts to be accessible
-from visualizer.utils import format_duration, human_ts, CHANNELS_DATA
 
 def plot_hourly_profile(
     channel_id: str,
@@ -27,10 +27,12 @@ def plot_hourly_profile(
     stats: Dict | None = None,
     save: bool = False,
     output_dir: Path = Path("."),
-    channels_data: Dict = {},
-    build_overview_text_func: Callable[[str, Dict], str] = lambda x, y: ""
+    channels_data: Optional[Dict] = None,
+    build_overview_text_func: Callable[[str, Dict], str] = lambda x, y: "",
 ) -> None:
     """Plot the average ad activity per hour of day."""
+    if channels_data is None:
+        channels_data = {}
     if not profile or not profile.get("days"):
         print("No data available or not enough distinct days for the hourly plot.")
         return
@@ -55,10 +57,7 @@ def plot_hourly_profile(
     ax_right.plot(hours, avg_counts, color="tab:orange", marker="o")
     ax_right.set_ylabel("Avg number of breaks", color="tab:orange", fontproperties=prop)
 
-    channel_name = channel_id
-    for ch_id, channel_info in (channels_data or {}).items():
-        if ch_id == channel_id:
-            channel_name = channel_info["name"]
+    channel_name = get_channel_name(channel_id, channels_data)
 
     for t in ax_left.get_yticklabels():
         t.set_fontproperties(prop)
@@ -74,7 +73,9 @@ def plot_hourly_profile(
     )
 
     if stats:
-        overview_text = build_overview_text_func(channel_id, stats, channels_data=channels_data)
+        overview_text = build_overview_text_func(
+            channel_id, stats, channels_data=channels_data
+        )
         fig.text(
             0.73,
             0.5,
@@ -104,10 +105,12 @@ def plot_heatmap(
     stats: Dict | None = None,
     save: bool = False,
     output_dir: Path = Path("."),
-    channels_data: Dict = {},
-    build_overview_text_func: Callable[[str, Dict], str] = lambda x, y: ""
+    channels_data: Optional[Dict] = None,
+    build_overview_text_func: Callable[[str, Dict], str] = lambda x, y: "",
 ) -> None:
     """Plot a heatmap of ad minute coverage by minute of hour and hour of day."""
+    if channels_data is None:
+        channels_data = {}
     if not heatmap_data or not heatmap_data.get("days"):
         print("No data available or not enough distinct days for the heatmap plot.")
         return
@@ -137,10 +140,7 @@ def plot_heatmap(
     cbar = fig.colorbar(im, ax=ax)
     cbar.set_label("Share of minute spent in ads per day", fontproperties=prop)
 
-    channel_name = channel_id
-    for ch_id, channel_info in (channels_data or {}).items():
-        if ch_id == channel_id:
-            channel_name = channel_info["name"]
+    channel_name = get_channel_name(channel_id, channels_data)
 
     fig.suptitle(
         (
@@ -151,7 +151,9 @@ def plot_heatmap(
     )
 
     if stats:
-        overview_text = build_overview_text_func(channel_id, stats, channels_data=channels_data)
+        overview_text = build_overview_text_func(
+            channel_id, stats, channels_data=channels_data
+        )
         fig.text(
             0.73,
             0.5,
@@ -182,10 +184,12 @@ def plot_combined(
     stats: Dict | None = None,
     save: bool = False,
     output_dir: Path = Path("."),
-    channels_data: Dict = {},
-    build_overview_text_func: Callable[[str, Dict], str] = lambda x, y: ""
+    channels_data: Optional[Dict] = None,
+    build_overview_text_func: Callable[[str, Dict], str] = lambda x, y: "",
 ) -> None:
     """Plot both hourly profile and heatmap in a single figure with the overview text box."""
+    if channels_data is None:
+        channels_data = {}
     if not profile or not profile.get("days"):
         print("No data available for the hourly plot.")
         return
@@ -193,11 +197,7 @@ def plot_combined(
         print("No data available for the heatmap plot.")
         return
 
-    channel_name = channel_id
-    for ch_id, channel_info in (channels_data or {}).items():
-        if ch_id == channel_id:
-            channel_name = channel_info["name"]
-            break
+    channel_name = get_channel_name(channel_id, channels_data)
 
     fig, (ax_hourly, ax_heatmap) = plt.subplots(2, 1, figsize=(14, 10))
 
@@ -262,7 +262,9 @@ def plot_combined(
     )
 
     if stats:
-        overview_text = build_overview_text_func(channel_id, stats, channels_data=channels_data)
+        overview_text = build_overview_text_func(
+            channel_id, stats, channels_data=channels_data
+        )
         fig.text(
             0.73,
             0.5,
@@ -290,7 +292,7 @@ def plot_weekday_overview(
     all_channels_data: List[Dict],
     save: bool = False,
     output_dir: Path = Path("."),
-    channels_data: Dict = {}
+    channels_data: Optional[Dict] = None,
 ) -> None:
     """
     Plot a weekday overview for all channels.
@@ -298,6 +300,8 @@ def plot_weekday_overview(
     - A bar showing number of ads per weekday
     - A horizontal heatmap strip showing ad coverage by weekday x hour
     """
+    if channels_data is None:
+        channels_data = {}
     if not all_channels_data:
         print("No data available for weekday overview.")
         return
@@ -315,11 +319,7 @@ def plot_weekday_overview(
 
     for data in all_channels_data:
         channel_id = data["channel_id"]
-        channel_name = channel_id
-        for ch_id, channel_info in (channels_data or {}).items():
-            if ch_id == channel_id:
-                channel_name = channel_info["name"]
-                break
+        channel_name = get_channel_name(channel_id, channels_data)
         channel_names.append(f"{channel_name}")
 
         weekday_profile = data.get("weekday_profile", {})
@@ -335,15 +335,13 @@ def plot_weekday_overview(
         normalized_row = []
         for weekday in range(7):
             for hour in range(24):
-                val = (
-                    grid[weekday][hour] / max(hm_days_seen[weekday], 1) / 3600
-                )
+                val = grid[weekday][hour] / max(hm_days_seen[weekday], 1) / 3600
                 normalized_row.append(min(val, 1.0))
         heatmap_plot_data.append(normalized_row)
 
     x = range(num_channels)
     bar_width = 0.12
-    colors = plt.cm.tab10(range(7))
+    colors = plt.get_cmap("tab10").colors[:7]
 
     for i, weekday in enumerate(weekday_names):
         offsets = [xi + (i - 3) * bar_width for xi in x]
@@ -401,27 +399,24 @@ def plot_weekday_channel(
     stats: Dict | None = None,
     save: bool = False,
     output_dir: Path = Path("."),
-    channels_data: Dict = {},
-    build_overview_text_func: Callable[[str, Dict], str] = lambda x, y: ""
+    channels_data: Optional[Dict] = None,
+    build_overview_text_func: Callable[[str, Dict], str] = lambda x, y: "",
 ) -> None:
     """
     Plot a weekday overview for a single channel.
-    Shows:
     - Bar chart of ad breaks per weekday
     - Heatmap of ad break counts by weekday x hour (7 rows x 24 columns)
     - Stats text box on the right
     """
+    if channels_data is None:
+        channels_data = {}
     if not weekday_profile or not weekday_hour_counts:
         print(f"No weekday data available for channel {channel_id}.")
         return
 
     weekday_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-    channel_name = channel_id
-    for ch_id, channel_info in (channels_data or {}).items():
-        if ch_id == channel_id:
-            channel_name = channel_info["name"]
-            break
+    channel_name = get_channel_name(channel_id, channels_data)
 
     fig, (ax_bars, ax_heatmap) = plt.subplots(2, 1, figsize=(14, 8))
 
@@ -499,7 +494,9 @@ def plot_weekday_channel(
     )
 
     if stats:
-        overview_text = build_overview_text_func(channel_id, stats, channels_data=channels_data)
+        overview_text = build_overview_text_func(
+            channel_id, stats, channels_data=channels_data
+        )
         fig.text(
             0.73,
             0.5,
@@ -527,7 +524,7 @@ def plot_channel_rankings(
     all_stats: List[Dict],
     save: bool = False,
     output_dir: Path = Path("."),
-    channels_data: Dict = {}
+    channels_data: Optional[Dict] = None,
 ) -> None:
     """
     Plot rankings of all channels based on:
@@ -535,6 +532,8 @@ def plot_channel_rankings(
     - Total ad duration
     - Longest single ad break
     """
+    if channels_data is None:
+        channels_data = {}
     if not all_stats:
         print("No data available for channel rankings.")
         return
@@ -546,11 +545,7 @@ def plot_channel_rankings(
         if not stats:
             continue
 
-        channel_name = channel_id
-        for ch_id, channel_info in (channels_data or {}).items():
-            if ch_id == channel_id:
-                channel_name = channel_info["name"]
-                break
+        channel_name = get_channel_name(channel_id, channels_data)
 
         max_break_duration = stats["max_break"][0] if stats.get("max_break") else 0
 
@@ -568,7 +563,9 @@ def plot_channel_rankings(
         print("No channel data for rankings.")
         return
 
-    fig, axes = plt.subplots(1, 3, figsize=(18, max(8, len(channels_data_for_plot) * 0.4)))
+    fig, axes = plt.subplots(
+        1, 3, figsize=(18, max(8, len(channels_data_for_plot) * 0.4))
+    )
 
     rankings = [
         ("total_ads", "Total Number of Ads", "Number of ad breaks", "tab:blue"),
@@ -577,7 +574,9 @@ def plot_channel_rankings(
     ]
 
     for ax, (metric, title, xlabel, color) in zip(axes, rankings):
-        sorted_data = sorted(channels_data_for_plot, key=lambda x, m=metric: x[m], reverse=True)
+        sorted_data = sorted(
+            channels_data_for_plot, key=lambda x, m=metric: x[m], reverse=True
+        )
 
         names = [d["channel_name"] for d in sorted_data]
         values = [d[metric] for d in sorted_data]
