@@ -47,7 +47,6 @@ uv run ./visualizer/main.py <channel-id>
 
 # Filter by date range
 uv run ./visualizer/main.py --start-date 2025-11-28 --end-date 2025-12-21
-```
 
 # Single channel with date filter
 uv run ./visualizer/main.py <channel-id> --start-date 2025-11-28
